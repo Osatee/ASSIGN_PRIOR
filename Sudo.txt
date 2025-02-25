@@ -1,0 +1,65 @@
+START
+    nodes = [
+        {"id": "input-node-1", "type": "input"},
+        {"id": "voyage-embed-node-2", "type": "org.maoz.prehandle.workers.neoai.aiclient.embedding.VoyageVerticle"},
+        {"id": "voyage-transform-node-3", "type": "org.maoz.prehandle.workers.neoai.aiclient.embedding.util.VoyageTransformVerticle"},
+        {"id": "http-client-adapter-verticle-node-4", "type": "org.maoz.prehandle.workers.neoai.httpclient.HttpClientAdapterVerticle"},
+        {"id": "line-node-7", "type": "org.maoz.prehandle.workers.neoai.notify.LineVerticle"},
+        {"id": "facebook-node-8", "type": "org.maoz.prehandle.workers.neoai.notify.FacebookVerticle"},
+        {"id": "discord-node-9", "type": "org.maoz.prehandle.workers.neoai.notify.DiscordVerticle"},
+        {"id": "to-publish-verticle-node-10", "type": "org.maoz.prehandle.workers.neoai.ebtransform.ToPublishVerticle"},
+        {"id": "output-node-10", "type": "org.maoz.prehandle.workers.neoai.output.OutputVerticle"}
+    ]
+
+    edges = [
+        {"source": "input-node-1", "target": "voyage-embed-node-2"},
+        {"source": "voyage-embed-node-2", "target": "http-client-adapter-verticle-node-4"},
+        {"source": "http-client-adapter-verticle-node-4", "target": "voyage-transform-node-3"},
+        {"source": "voyage-transform-node-3", "target": "to-publish-verticle-node-10"},
+        {"source": "to-publish-verticle-node-10", "target": "line-node-7"},
+        {"source": "to-publish-verticle-node-10", "target": "facebook-node-8"},
+        {"source": "to-publish-verticle-node-10", "target": "discord-node-9"},
+        {"source": "to-publish-verticle-node-10", "target": "output-node-10"}
+    ]
+
+    Nodes = []
+    addressIn = []
+    addressOut = []
+
+    FOR EACH node IN nodes DO
+        nodeId = node["id"]
+        nodeType = node["type"]
+
+        in = []
+        FOR EACH edge IN edges DO
+            IF edge["target"] == nodeId THEN
+                in.push("'" + edge["source"] + "'")
+            END IF
+        END FOR
+
+        out = []
+        FOR EACH edge IN edges DO
+            IF edge["source"] == nodeId THEN
+                out.push("'" + edge["target"] + "'")
+            END IF
+        END FOR
+
+        Nodes.push("'" + nodeType + "'")
+
+        IF in IS EMPTY THEN
+            addressIn.push("''")
+        ELSE
+            addressIn.push(in.join(","))
+        END IF
+
+        IF out IS EMPTY THEN
+            addressOut.push("''")
+        ELSE
+            addressOut.push(out.join(","))
+        END IF
+    END FOR
+
+    PRINT "Nodes: " + Nodes
+    PRINT "addressIn: " + addressIn
+    PRINT "addressOut: " + addressOut
+STOP
