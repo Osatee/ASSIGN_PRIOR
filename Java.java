@@ -1,75 +1,164 @@
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+
+class Edge {
+    String id;
+    String source;
+    String target;
+
+    public Edge(String id, String source, String target) {
+        this.id = id;
+        this.source = source;
+        this.target = target;
+    }
+}
+
+class Node {
+    String id;
+    String type;
+    String page;
+
+    public Node(String id, String type, String page) {
+        this.id = id;
+        this.type = type;
+        this.page = page;
+    }
+}
+
+class NodeInfo {
+    String nodeType;
+    String addressIn;
+    String addressOut;
+
+    public NodeInfo(String nodeType, String addressIn, String addressOut) {
+        this.nodeType = nodeType;
+        this.addressIn = addressIn;
+        this.addressOut = addressOut;
+    }
+
+    @Override
+    public String toString() {
+        return "Nodes = ['" + nodeType + "'], " +
+               "addressIn = ['" + addressIn + "'], " +
+               "addressOut = ['" + addressOut + "']";
+    }
+}
 
 public class Java {
-    public static void main(String[] args) {
-        // สร้าง List nodes และทำการ Map key, value ตาม rawdata ที่ให้มาเพิ่มลงไปใน List
-        List<Map<String, String>> nodes = new ArrayList<>();
-        nodes.add(Map.of("id", "input-node-1", "type", "input"));
-        nodes.add(Map.of("id", "voyage-embed-node-2", "type", "org.maoz.prehandle.workers.neoai.aiclient.embedding.VoyageVerticle"));
-        nodes.add(Map.of("id", "voyage-transform-node-3", "type", "org.maoz.prehandle.workers.neoai.aiclient.embedding.util.VoyageTransformVerticle"));
-        nodes.add(Map.of("id", "http-client-adapter-verticle-node-4", "type", "org.maoz.prehandle.workers.neoai.httpclient.HttpClientAdapterVerticle"));
-        nodes.add(Map.of("id", "line-node-7", "type", "org.maoz.prehandle.workers.neoai.notify.LineVerticle"));
-        nodes.add(Map.of("id", "facebook-node-8", "type", "org.maoz.prehandle.workers.neoai.notify.FacebookVerticle"));
-        nodes.add(Map.of("id", "discord-node-9", "type", "org.maoz.prehandle.workers.neoai.notify.DiscordVerticle"));
-        nodes.add(Map.of("id", "to-publish-verticle-node-10", "type", "org.maoz.prehandle.workers.neoai.ebtransform.ToPublishVerticle"));
-        nodes.add(Map.of("id", "output-node-10", "type", "org.maoz.prehandle.workers.neoai.output.OutputVerticle"));
+    // function สำหรับสร้าง Nodes, addressIn, addressOut
+    public static List<NodeInfo> createNodeInfoList(List<Node> nodes, List<Edge> edges) {
+        List<NodeInfo> nodeInfos = new ArrayList<>();
 
-         // สร้าง List edges และทำการ Map key, value ตาม rawdata ที่ให้มาเพิ่มลงไปใน List
-        List<Map<String, String>> edges = new ArrayList<>();
-        edges.add(Map.of("source", "input-node-1", "target", "voyage-embed-node-2"));
-        edges.add(Map.of("source", "voyage-embed-node-2", "target", "http-client-adapter-verticle-node-4"));
-        edges.add(Map.of("source", "http-client-adapter-verticle-node-4", "target", "voyage-transform-node-3"));
-        edges.add(Map.of("source", "voyage-transform-node-3", "target", "to-publish-verticle-node-10"));
-        edges.add(Map.of("source", "to-publish-verticle-node-10", "target", "line-node-7"));
-        edges.add(Map.of("source", "to-publish-verticle-node-10", "target", "facebook-node-8"));
-        edges.add(Map.of("source", "to-publish-verticle-node-10", "target", "discord-node-9"));
-        edges.add(Map.of("source", "to-publish-verticle-node-10", "target", "output-node-10"));
+        for (Node node : nodes) {
+            String addressIn = "";
+            String addressOut = "";
 
-        List<String> Nodes = new ArrayList<>();
-        List<String> addressIn = new ArrayList<>();
-        List<String> addressOut = new ArrayList<>();
-
-        // Loop แต่ละ element ใน nodes
-        for (Map<String, String> node : nodes) {
-            String nodeId = node.get("id");
-            String nodeType = node.get("type");
-
-            // หา addressIn โดยเช็คว่า nodeId ไหนตรงกับ target ของ edges และให้เพิ่มส่วนของ source
-            List<String> in = new ArrayList<>();
-            for (Map<String, String> edge : edges) {
-                if (edge.get("target").equals(nodeId)) {
-                    in.add("'" + edge.get("source") + "'");
+            // หา addressIn จาก Node ที่ชี้ไป
+            for (Edge edge : edges) {
+                if (edge.target.equals(node.id)) {
+                    addressIn = edge.source;
+                    break;
                 }
             }
 
-            // หา addressOut โดยเช็คว่า nodeId ไหนตรงกับ target ของ edges และให้เพิ่มส่วนของ target
-            List<String> out = new ArrayList<>();
-            for (Map<String, String> edge : edges) {
-                if (edge.get("source").equals(nodeId)) {
-                    out.add("'" + edge.get("target") + "'");
+            // หา addressOut จาก Node ที่ชี้ไป
+            for (Edge edge : edges) {
+                if (edge.source.equals(node.id)) {
+                    if (!addressOut.isEmpty()) {
+                        addressOut += ", ";
+                    }
+                    addressOut += edge.target;
                 }
             }
 
-            // เพิ่มข้อมูลเข้า Lists มี '' ครอบข้อมูลเสมอ
-            Nodes.add("'" + nodeType + "'");
-            
-            // เช็คว่าถ้า addressIn ไม่แสดงข้อมูลให้ใส่ ''
-            if (in.isEmpty()) {
-                addressIn.add("''");
-            } else {
-                addressIn.add(String.join(",", in)); // if มีหลายค่าให้เชื่อมด้วย ','
+            // เช็คตามเงื่อนไขที่ว่า
+            // Input : มีเฉพาะ addressOut
+            // OpenAI Embedding : มี addressIn และ addressOut
+            // To publish : มี addressIn และ addressOut
+            // Line, Facebook, Discord, Output : มีเฉพาะ addressIn
+            switch (node.type) {
+                case "input":
+                    addressIn = "";
+                    break;
+                case "org.maoz.prehandle.workers.neoai.notify.LineVerticle":
+                case "org.maoz.prehandle.workers.neoai.notify.FacebookVerticle":
+                case "org.maoz.prehandle.workers.neoai.notify.DiscordVerticle":
+                case "org.maoz.prehandle.workers.neoai.output.OutputVerticle":
+                    addressOut = "";
+                    break;
             }
 
-            // เช็คว่าถ้า addressOut ไม่แสดงข้อมูลให้ใส่ ''
-            if (out.isEmpty()) {
-                addressOut.add("''");
-            } else {
-                addressOut.add(String.join(",", out)); // if มีหลายค่าให้เชื่อมด้วย ','
-            }
+            nodeInfos.add(new NodeInfo(node.type, addressIn, addressOut));
         }
 
-        System.out.println("Nodes: " + Nodes);
-        System.out.println("addressIn: " + addressIn);
-        System.out.println("addressOut: " + addressOut);
+        return nodeInfos;
+    }
+
+    // สร้างรูปแบบ String ตามผลลัพธ์ที่ต้องการของ Nodes
+    public static String getNodeTypes(List<NodeInfo> nodeInfos) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < nodeInfos.size(); i++) {
+            sb.append("'").append(nodeInfos.get(i).nodeType).append("'");
+            if (i < nodeInfos.size() - 1) {
+                sb.append(", ");
+            }
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+
+    // สร้างรูปแบบ String ตามผลลัพธ์ที่ต้องการของ addressIn
+    public static String getAddressIn(List<NodeInfo> nodeInfos) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < nodeInfos.size(); i++) {
+            sb.append("'").append(nodeInfos.get(i).addressIn).append("'");
+            if (i < nodeInfos.size() - 1) {
+                sb.append(", ");
+            }
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+
+    // สร้างรูปแบบ String ตามผลลัพธ์ที่ต้องการของ addressOut
+    public static String getAddressOut(List<NodeInfo> nodeInfos) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < nodeInfos.size(); i++) {
+            sb.append("'").append(nodeInfos.get(i).addressOut).append("'");
+            if (i < nodeInfos.size() - 1) {
+                sb.append(", ");
+            }
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+
+    public static void main(String[] args) {
+        List<Edge> edges = new ArrayList<>();
+        edges.add(new Edge("xy-edge__input-node-1-voyage-embed-node-2", "input-node-1", "voyage-embed-node-2"));
+        edges.add(new Edge("xy-edge__voyage-embed-node-2-http-client-adapter-verticle-node-4", "voyage-embed-node-2", "http-client-adapter-verticle-node-4"));
+        edges.add(new Edge("xy-edge__http-client-adapter-verticle-node-4-voyage-transform-node-3", "http-client-adapter-verticle-node-4", "voyage-transform-node-3"));
+        edges.add(new Edge("xy-edge__voyage-transform-node-3-to-publish-verticle-node-10", "voyage-transform-node-3", "to-publish-verticle-node-10"));
+        edges.add(new Edge("xy-edge__to-publish-verticle-node-10-line-node-7", "to-publish-verticle-node-10", "line-node-7"));
+        edges.add(new Edge("xy-edge__to-publish-verticle-node-10-facebook-node-8", "to-publish-verticle-node-10", "facebook-node-8"));
+        edges.add(new Edge("xy-edge__to-publish-verticle-node-10-discord-node-9", "to-publish-verticle-node-10", "discord-node-9"));
+        edges.add(new Edge("xy-edge__to-publish-verticle-node-10-output-node-10", "to-publish-verticle-node-10", "output-node-10"));
+
+        List<Node> nodes = new ArrayList<>();
+        nodes.add(new Node("input-node-1", "input", "embedding"));
+        nodes.add(new Node("voyage-embed-node-2", "org.maoz.prehandle.workers.neoai.aiclient.embedding.VoyageVerticle", "embedding"));
+        nodes.add(new Node("http-client-adapter-verticle-node-4", "org.maoz.prehandle.workers.neoai.httpclient.HttpClientAdapterVerticle", "embedding"));
+        nodes.add(new Node("voyage-transform-node-3", "org.maoz.prehandle.workers.neoai.aiclient.embedding.util.VoyageTransformVerticle", "embedding"));
+        nodes.add(new Node("to-publish-verticle-node-10", "org.maoz.prehandle.workers.neoai.ebtransform.ToPublishVerticle", "embedding"));
+        nodes.add(new Node("line-node-7", "org.maoz.prehandle.workers.neoai.notify.LineVerticle", "embedding"));
+        nodes.add(new Node("facebook-node-8", "org.maoz.prehandle.workers.neoai.notify.FacebookVerticle", "embedding"));
+        nodes.add(new Node("discord-node-9", "org.maoz.prehandle.workers.neoai.notify.DiscordVerticle", "embedding"));
+        nodes.add(new Node("output-node-10", "org.maoz.prehandle.workers.neoai.output.OutputVerticle", "embedding"));
+
+        List<NodeInfo> nodeInfos = createNodeInfoList(nodes, edges);
+
+        System.out.println("Nodes = " + getNodeTypes(nodeInfos));
+        System.out.println("addressIn = " + getAddressIn(nodeInfos));
+        System.out.println("addressOut = " + getAddressOut(nodeInfos));
     }
 }
